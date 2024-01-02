@@ -3,4 +3,4 @@
 	url = https://github.com/magicleap/SuperGluePretrainedNetwork
 [submodule "LightGlue"]
 	path = LightGlue
-	url = https://github.com/cvg/LightGlue.git
+	url = https://github.com/marknaeem/LightGlue.git 
