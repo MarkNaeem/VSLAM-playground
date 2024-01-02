@@ -1,4 +1,5 @@
 .vscode
+drafts/
 trajectories/
 processed_trajectories/
 vslam.egg-info/
