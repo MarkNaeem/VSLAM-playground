@@ -1,6 +1,7 @@
 .vscode
 drafts/
 trajectories/
+pointclouds/
 processed_trajectories/
 vslam.egg-info/
 *__pycache__/

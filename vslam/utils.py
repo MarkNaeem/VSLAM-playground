@@ -233,15 +233,25 @@ def disparity_to_depth(disparity, focal_length, baseline):
     depth = (focal_length * baseline) / disparity
     return depth
 
-    
-    
+def get_feature_colors(color_image, features):
+    """
+    Returns keypoints colours from a coloured image
+    :param color_image: colored image to get the RGB values from.
+    :param features: (N,2) points array for the locations of the features on the image. All points must be  located within the image frame.
+    :return: array of RGB colors of shape (N,3).
+    """
+    colors = []
+    for feat in features:
+        colors.append(color_image[feat[1],feat[0]])
+    return np.asarray(colors) 
+
 def keypoints_to_3d(keypoints, depth_image, intrinsic_matrix, max_depth=None):
     """
     Convert keypoints from a depth image to 3D coordinates.
     :param keypoints: List of (u, v) tuples of keypoint pixel coordinates.
     :param depth_image: 2D array with depth values.
     :param intrinsic_matrix: 3x3 intrinsic camera matrix.
-    :return: List of (X, Y, Z) 3D coordinates.
+    :return: array of (X, Y, Z) 3D coordinates.
     """
     fx, fy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1]
     cx, cy = intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]

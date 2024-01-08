@@ -1,16 +1,22 @@
 import cv2
 import torch
+import pickle
 import numpy as np
 from SuperGluePretrainedNetwork.models.matching import Matching
 from SuperGluePretrainedNetwork.models.utils import frame2tensor
 
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+
 from vslam.utils import *
 from vslam.definitions import *
 
-DATA_TRACK = '00'
+DATA_TRACK = '02'
 MAX_IMG_HEIGHT = 256
 MAX_DEPTH = 70
 TRAJECTORY_PATH = 'trajectories/lidar_depth_trajectory.npy'
+POINTCLOUD_PATH = 'pointclouds/lidar_depth_pointclouds.pkl'
 
 num_images = len(os.listdir(f'{DATASET_PATH}/sequences/{DATA_TRACK}/image_2'))
 
@@ -47,15 +53,17 @@ config = {
 matching = Matching(config).eval().to(device)
 
 
-
 # Initialize variables for tracking position and orientation
 try:
     trajectory = np.load(TRAJECTORY_PATH)
     current_pose = trajectory[-1]
+    with open(POINTCLOUD_PATH, 'rb') as file:
+        pointclouds = pickle.load(file)
 except:
-    print("no trajectory saved found.. starting new")
+    print("no trajectory or pointclouds saved found.. starting new")
     current_pose = np.eye(4)
     trajectory = [current_pose]
+    pointclouds = []
 
 
 prev_image_path = f'{DATASET_PATH}/sequences/{DATA_TRACK}/image_2/{len(trajectory)-1:06d}.png'
@@ -84,8 +92,9 @@ for i in tqdm(range(len(trajectory),num_images - 1)):
     curr_image_path = f'{DATASET_PATH}/sequences/{DATA_TRACK}/image_2/{i:06d}.png'
 
     # Load the previous and current images
-    curr_frame = cv2.imread(curr_image_path,0)
+    color_curr_frame = cv2.imread(curr_image_path)
     # color_curr_frame = scale_image(color_curr_frame,max_height=MAX_IMG_HEIGHT)
+    curr_frame = cv2.cvtColor(color_curr_frame, cv2.COLOR_BGR2GRAY)
 
     lidar_path = f'{DATASET_PATH}/sequences/{DATA_TRACK}/velodyne/{i:06d}.bin'
     lidar_points = read_velodyne_bin(lidar_path)
@@ -113,6 +122,10 @@ for i in tqdm(range(len(trajectory),num_images - 1)):
 
     pts3d, deleted = keypoints_to_3d(mkpts1,depth,intrinsic_matrix,MAX_DEPTH)
     mkpts0 = np.delete(mkpts0,deleted,0)
+    mkpts1 = np.delete(mkpts1,deleted,0)
+    colors = get_feature_colors(color_curr_frame,mkpts1)
+    # register the pointclouds for visualisation later
+    pointclouds.append(np.hstack([pts3d,colors]))
     
     _, rvec, t, _ = cv2.solvePnPRansac(pts3d,mkpts0,intrinsic_matrix,None)
     R = cv2.Rodrigues(rvec)[0]    
@@ -137,9 +150,13 @@ for i in tqdm(range(len(trajectory),num_images - 1)):
     print("stopping...")
     break
 
+
+# save the trajectory
 trajectory = np.asarray(trajectory)
 np.save(TRAJECTORY_PATH,trajectory,allow_pickle=True)
-
+# save the pointclouds
+with open(POINTCLOUD_PATH, 'wb') as f:
+    pickle.dump(pointclouds, f)
 
 # Extract positions from the trajectories
 kitti_positions = [pose[:3, 3] for pose in real_trajectory]  # Assuming kitti_trajectory is loaded from the dataset
