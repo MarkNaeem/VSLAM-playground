@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'data_publisher = VslamPlaygroundROS.dataPublisher:main'
+            'data_publisher_py = VslamPlaygroundROS.data_publisher_py:main'
         ],
     },
 )

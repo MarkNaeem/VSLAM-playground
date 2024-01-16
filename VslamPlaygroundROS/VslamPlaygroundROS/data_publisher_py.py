@@ -28,7 +28,6 @@ class DataPublisher(Node):
         self.depth_pub = self.create_publisher(Image, 'image_depth', 10)
         self.pointcloud_pub = self.create_publisher(PointCloud2, 'lidar_points', 10)
         self.camera_info_pub = self.create_publisher(CameraInfo, 'camera_info', 10)
-        self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
 
         self.data_track = '02'
         self.dataset_path = DATASET_PATH
@@ -107,46 +106,42 @@ class DataPublisher(Node):
 
 
     def publish_static_transform(self):
+        self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = 'camera_link'
         t.child_frame_id = 'lidar_link'
-
         # Set the translation from the extrinsic matrix
         t.transform.translation.x = self.extrinsic_matrix[0, 3]
         t.transform.translation.y = self.extrinsic_matrix[1, 3]
         t.transform.translation.z = self.extrinsic_matrix[2, 3]
-
         # Extract the rotation matrix and convert it to a quaternion
         quaternion = tf_transformations.quaternion_from_matrix(self.extrinsic_matrix)
-
         # Set the rotation in the transform
         t.transform.rotation.x = quaternion[0]
         t.transform.rotation.y = quaternion[1]
         t.transform.rotation.z = quaternion[2]
         t.transform.rotation.w = quaternion[3]
-
+        # Send the transform
         self.tf_broadcaster.sendTransform(t)
 
+        self.tf_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = 'base_link'
         t.child_frame_id = 'camera_link'
-
         # Set the translation from the extrinsic matrix
         t.transform.translation.x = 0.0
         t.transform.translation.y = 0.0
         t.transform.translation.z = 0.0
-
         # Extract the rotation matrix and convert it to a quaternion
         quaternion = tf_transformations.quaternion_from_matrix(self.extrinsic_matrix.T)
-
         # Set the rotation in the transform
         t.transform.rotation.x = quaternion[0]
         t.transform.rotation.y = quaternion[1]
         t.transform.rotation.z = quaternion[2]
         t.transform.rotation.w = quaternion[3]
-
+        # Send the transform
         self.tf_broadcaster.sendTransform(t)
 
 

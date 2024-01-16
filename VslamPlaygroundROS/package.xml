@@ -1,18 +1,54 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>VslamPlaygroundROS</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="marknaeem@yahoo.com">marknaeem97</maintainer>
-  <license>TODO: License declaration</license>
+  <description>a playground for visual slam with kitti odometry dataset</description>
+  <maintainer email="marknaeem@yahoo.com">Mar Naeem</maintainer>
+  <license>Apache-2.0</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <!-- Buildtool dependencies, needed for building the package -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend> <!-- Needed for Python nodes -->
+
+
+
+  <!-- Build dependencies, needed for building the package -->
+  <build_depend>rclcpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>eigen3_cmake_module</build_depend>
+  <build_depend>PCL</build_depend>
+  <build_depend>OpenCV</build_depend>
+  <build_depend>cv_bridge</build_depend>
+
+  <!-- Build export dependencies, needed for building the package -->
+  <build_export_depend>rclcpp</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+  <build_export_depend>sensor_msgs</build_export_depend>
+  <build_export_depend>geometry_msgs</build_export_depend>
+  <build_export_depend>tf2_ros</build_export_depend>
+  <build_export_depend>eigen3_cmake_module</build_export_depend>
+  <build_export_depend>PCL</build_export_depend>
+  <build_export_depend>OpenCV</build_export_depend>
+
+  <!-- Exec dependencies, needed for running the package -->
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>Eigen3</exec_depend>
+  <exec_depend>PCL</exec_depend>
+  <exec_depend>OpenCV</exec_depend>
+
+  <!-- Test dependencies -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <build_type>ament_python</build_type>
+    <!-- The export tag contains other, unspecified, tags -->
+    <build_type>ament_cmake</build_type> <!-- This allows C++ building -->
   </export>
 </package>
