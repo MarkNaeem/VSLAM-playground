@@ -6,8 +6,6 @@ from SuperGluePretrainedNetwork.models.matching import Matching
 from SuperGluePretrainedNetwork.models.utils import frame2tensor
 
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
 
 from vslam.utils import *
 from vslam.definitions import *

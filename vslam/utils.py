@@ -5,6 +5,8 @@ import open3d as o3d
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
+import matplotlib
+matplotlib.use('TkAgg')
 
 
 def decomposeEssentialMatrix(E, pts0, pts1, K):

@@ -5,7 +5,7 @@ setup(
     version='1.0',
     author='Mark Naeem',
     author_email='marknaeem@yahoo.com',
-    url='http://github.com/yourusername/yourpackagename',
+    url='https://github.com/MarkNaeem/VSLAM-playground/',
     packages=find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
