@@ -24,10 +24,10 @@ class DataPublisher(Node):
     def __init__(self):
         super().__init__('data_publisher')
         self.cv_bridge = CvBridge()
-        self.image_pub = self.create_publisher(Image, 'image_color', 10)
-        self.depth_pub = self.create_publisher(Image, 'image_depth', 10)
-        self.pointcloud_pub = self.create_publisher(PointCloud2, 'lidar_points', 10)
-        self.camera_info_pub = self.create_publisher(CameraInfo, 'camera_info', 10)
+        self.image_pub = self.create_publisher(Image, 'py_image_color', 10)
+        self.depth_pub = self.create_publisher(Image, 'py_image_depth', 10)
+        self.pointcloud_pub = self.create_publisher(PointCloud2, 'py_lidar_points', 10)
+        self.camera_info_pub = self.create_publisher(CameraInfo, 'py_camera_info', 10)
 
         self.data_track = '02'
         self.dataset_path = DATASET_PATH
@@ -62,10 +62,10 @@ class DataPublisher(Node):
             lidar_points = read_velodyne_bin(lidar_path)
             image_points, depths = project_lidar_to_camera(lidar_points, self.extrinsic_matrix, self.intrinsic_matrix, self.intrinsic_matrix[0, 2] * 2, self.intrinsic_matrix[1, 2] * 2)
             lidar_depth_image, _ = create_depth_image(image_points, depths, int(self.intrinsic_matrix[0, 2] * 2), int(self.intrinsic_matrix[1, 2] * 2))
-            depth = densify_depth_image_fast(lidar_depth_image)
+            # depth = densify_depth_image_fast(lidar_depth_image)
             point_cloud = self.convert_lidar_to_PointCloud2(lidar_points)
             
-            self.depth_queue.put(depth)
+            self.depth_queue.put(lidar_depth_image)
             self.pointcloud_queue.put(point_cloud)
 
 

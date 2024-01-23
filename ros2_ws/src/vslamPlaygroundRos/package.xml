@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>VslamPlaygroundROS</name>
+  <name>vslam-playground-ros</name>
   <version>0.0.0</version>
   <description>a playground for visual slam with kitti odometry dataset</description>
   <maintainer email="marknaeem@yahoo.com">Mar Naeem</maintainer>

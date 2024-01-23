@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(VslamPlaygroundROS)
+project(vslam-playground-ros)
 
 
 set(CMAKE_CXX_STANDARD 14)
@@ -40,7 +40,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 # Declare a C++ library
 add_library(${PROJECT_NAME}_lib
-    VslamPlaygroundROS/data_publisher.cpp
+    src/data_publisher.cpp
 )
 
 ament_target_dependencies(${PROJECT_NAME}_lib
@@ -57,7 +57,7 @@ ament_target_dependencies(${PROJECT_NAME}_lib
 )  
 
 # Declare a C++ executable
-add_executable(data_publisher VslamPlaygroundROS/data_publisher.cpp)
+add_executable(data_publisher src/data_publisher.cpp)
 
 target_link_libraries(data_publisher
   ${PROJECT_NAME}_lib

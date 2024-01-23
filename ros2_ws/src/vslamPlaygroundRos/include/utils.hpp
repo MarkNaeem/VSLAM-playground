@@ -148,8 +148,7 @@ cv::Mat projectLidarDataToDepthImage(const pcl::PointCloud<pcl::PointXYZI>::Ptr&
 }
 
 
-
-void densifyDepthImage(const cv::Mat& depth_image, cv::Mat& densified_depth_image, const std::string& method = "telea") {
+void densifyDepthImage(const cv::Mat& depth_image, cv::Mat& densified_depth_image, const std::string& method = "ns") {
     int height = depth_image.rows;
     int width = depth_image.cols;
 
