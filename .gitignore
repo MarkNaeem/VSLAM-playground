@@ -5,3 +5,8 @@ pointclouds/
 processed_trajectories/
 vslam.egg-info/
 *__pycache__/
+
+ros2_ws/*
+!ros2_ws/src/
+!ros2_ws/README.md
+!ros2_ws/src/*
