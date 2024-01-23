@@ -7,9 +7,10 @@ Building a full Visual SLAM pipeline to experiment with different techniques
 - `python3 -m pip install -e .` 
 - `git submodule init`
 - `git submodule update`
+- You can directly build the ROS2 package inside the given workspace and source it, or copy the node to your own workspace.
 
 **Notes:**
-- Make sure to modify definitions.py to point at your KITI dataset.
+- Make sure to modify definitions.py to point at your KITTI dataset. (**UPDATE:** Now the C++ node has this path as a parameter.)
 - Don't forget to go into LightGlue folder and run the install command there `python3 -m pip install -e .`
 
 
