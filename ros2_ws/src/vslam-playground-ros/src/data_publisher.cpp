@@ -42,6 +42,7 @@ public:
         // this->declare_parameter<int>("image_height_offset", 150); // Specific to depth image processing
         this->declare_parameter<bool>("densify_depth", true);
         this->declare_parameter<bool>("publish_test_pcl", true);
+        this->declare_parameter<int>("densification_radius", 2);
 
         std::string base_directory;
         std::string data_track;
@@ -56,6 +57,7 @@ public:
         // this->get_parameter("image_height_offset", image_height_offset);
         this->get_parameter("densify_depth", densify_depth);
         this->get_parameter("publish_test_pcl", publish_test_pcl);
+        this->get_parameter("densification_radius", densification_radius);
         
         // Construct paths based on parameters
         image_directory = base_directory + "/sequences/" + data_track + "/image_2";
@@ -175,6 +177,7 @@ private:
     
     bool densify_depth;
     bool publish_test_pcl;
+    int densification_radius;
     int _publishData_millis;
     int _data_counter = 0;
     int num_images;
@@ -233,10 +236,11 @@ private:
                 ss << std::setw(6) << std::setfill('0') << id;
                 std::string lidar_path = lidar_directory + "/" + ss.str() + ".bin";
                 pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_data = readLidarData(lidar_path);
-                cv::Mat depth_image = projectLidarDataToDepthImageFast(lidar_data, extrinsic_matrix, intrinsic_matrix);
+                cv::Mat depth_image;
+                projectLidarDataToDepthImageFaster(lidar_data, extrinsic_matrix, intrinsic_matrix, depth_image);
                 if(densify_depth)
                 {
-                    densifyDepthImageFast(depth_image);
+                    densifyDepthImageWithRadius(depth_image,densification_radius);
                 }
 
                 sensor_msgs::msg::PointCloud2 rosCloud;
@@ -313,52 +317,19 @@ private:
             }
             if (publish_test_pcl)
             {
-                depthImageToPointcloud(depth_image);                
+                pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+                depthImageToPointcloud(depth_image, intrinsic_matrix, cloud);                
+                // Convert to ROS message
+                sensor_msgs::msg::PointCloud2 output;
+                pcl::toROSMsg(*cloud, output);
+                output.header.frame_id = "camera_link"; 
+                output.header.stamp = this->get_clock()->now();
+                // Publish the point cloud
+                depth_pcl_pub->publish(output);
             }            
             sensor_msgs::msg::CameraInfo camera_info_msg = createCameraInfoMsg();
             camera_info_pub->publish(camera_info_msg);
         }
-    }
-
-    void depthImageToPointcloud(const cv::Mat& depth_image) {
-        // Assuming depth_image is a CV_32FC1 image with depth in meters
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-        float fx = intrinsic_matrix(0, 0); // Focal length x
-        float fy = intrinsic_matrix(1, 1); // Focal length y
-        float cx = intrinsic_matrix(0, 2); // Principal point x
-        float cy = intrinsic_matrix(1, 2); // Principal point y
-
-        cloud->width = depth_image.cols;
-        cloud->height = depth_image.rows;
-        cloud->is_dense = false;
-        cloud->points.resize(cloud->width * cloud->height);
-
-        for (int i = 150; i < depth_image.rows; i++) {
-            for (int j = 0; j < depth_image.cols; j++) {
-                pcl::PointXYZ& pt = cloud->points[i * depth_image.cols + j];
-                
-                float depth = depth_image.at<float>(i, j);
-                if (std::isnan(depth) || depth <= 0) { // Check for invalid depth
-                    pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
-                    continue;
-                }
-
-                // Project (i, j, depth) to 3D space
-                pt.x = (j - cx) * depth / fx;
-                pt.y = (i - cy) * depth / fy;
-                pt.z = depth;
-            }
-        }
-
-        // Convert to ROS message
-        sensor_msgs::msg::PointCloud2 output;
-        pcl::toROSMsg(*cloud, output);
-        output.header.frame_id = "camera_link"; 
-        output.header.stamp = this->get_clock()->now();
-
-        // Publish the point cloud
-        depth_pcl_pub->publish(output);
     }
 
     sensor_msgs::msg::CameraInfo createCameraInfoMsg() {

@@ -17,12 +17,13 @@ def generate_launch_description():
         executable='data_publisher',
         name='data_publisher',
         parameters=[
-            {'publish_rate_millis': 200},
+            {'publish_rate_millis': 100},
             {'max_size': 50},
             {'num_image_loader_threads': 1},
-            {'num_depth_loader_threads': 3},
-            {'densify_depth': False},
+            {'num_depth_loader_threads': 2},
+            {'densify_depth': True},
             {'publish_test_pcl': True},
+            {'densification_radius': 2},
         ],
     )
 
