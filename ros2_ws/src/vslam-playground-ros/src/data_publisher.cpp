@@ -33,15 +33,14 @@ public:
                      steady_clock(RCL_STEADY_TIME)
       { 
         // Declare parameters with default values
-        this->declare_parameter<std::string>("base_directory", "/media/mark/New Volume/kitti-dataset/");
-        this->declare_parameter<std::string>("data_track", "02");
-        this->declare_parameter<int>("publish_rate_millis", 60); // Publishing rate in milliseconds
-        this->declare_parameter<int>("max_size", 60); // Maximum number of elements in the maps
-        this->declare_parameter<int>("num_image_loader_threads", 2);
-        this->declare_parameter<int>("num_depth_loader_threads", 6);
-        // this->declare_parameter<int>("image_height_offset", 150); // Specific to depth image processing
-        this->declare_parameter<bool>("densify_depth", true);
-        this->declare_parameter<bool>("publish_test_pcl", true);
+        this->declare_parameter<std::string>("base_directory");
+        this->declare_parameter<std::string>("data_track");
+        this->declare_parameter<float>("publish_rate", 10.0); // Publishing rate in Hz
+        this->declare_parameter<int>("max_size", 10); // Maximum number of elements in the maps
+        this->declare_parameter<int>("num_image_loader_threads", 1);
+        this->declare_parameter<int>("num_depth_loader_threads", 2);
+        this->declare_parameter<std::string>("depth_densification_method", "none");
+        this->declare_parameter<bool>("publish_test_pcl", false);
         this->declare_parameter<int>("densification_radius", 2);
 
         std::string base_directory;
@@ -50,15 +49,16 @@ public:
         // Use parameters to set values
         this->get_parameter("base_directory", base_directory);
         this->get_parameter("data_track", data_track);
-        this->get_parameter("publish_rate_millis", _publishData_millis);
+        this->get_parameter("publish_rate", publishData_rate);
         this->get_parameter("max_size", MAX_SIZE);
         this->get_parameter("num_image_loader_threads", num_image_loader_threads);
         this->get_parameter("num_depth_loader_threads", num_depth_loader_threads);
-        // this->get_parameter("image_height_offset", image_height_offset);
-        this->get_parameter("densify_depth", densify_depth);
+        this->get_parameter("depth_densification_method", depth_densification_method);
         this->get_parameter("publish_test_pcl", publish_test_pcl);
         this->get_parameter("densification_radius", densification_radius);
         
+        _publishData_millis = static_cast<int>(1000.0 / publishData_rate);
+
         // Construct paths based on parameters
         image_directory = base_directory + "/sequences/" + data_track + "/image_2";
         lidar_directory = base_directory + "/sequences/" + data_track + "/velodyne";
@@ -175,21 +175,23 @@ private:
     std::vector<std::thread> image_loader_threads;
     std::vector<std::thread> depth_loader_threads;
     
-    bool densify_depth;
     bool publish_test_pcl;
     int densification_radius;
     int _publishData_millis;
+    float publishData_rate;
     int _data_counter = 0;
     int num_images;
     std::string image_directory;
     std::string lidar_directory;
     std::string calib_file_path;
 
+    std::string depth_densification_method;
+    std::unordered_map<std::string,int> densification_methods_map = {{"flann",0},{"radius",1},{"none",2}};
+
 
    void imageWorker() {
-        int freq = static_cast<int>((1.0*10.0)/(_publishData_millis*0.001f));
-        RCLCPP_INFO(this->get_logger(), "Image worker thread started with %d Hz.", freq);
-        rclcpp::Rate rate(freq); 
+        RCLCPP_INFO(this->get_logger(), "Image worker thread started with %f Hz.", publishData_rate);
+        rclcpp::Rate rate(publishData_rate); 
         while (rclcpp::ok() && !image_id_queue.empty())
         {
             if(image_map.size()<=MAX_SIZE)
@@ -217,9 +219,8 @@ private:
 
 
     void depthWorker() {
-        int freq = static_cast<int>((1.0*10.0)/(_publishData_millis*0.001f));
-        RCLCPP_INFO(this->get_logger(), "Depth worker thread started with %d Hz.", freq);
-        rclcpp::Rate rate(freq); 
+        RCLCPP_INFO(this->get_logger(), "Depth worker thread started with %f Hz.", 10*publishData_rate);
+        rclcpp::Rate rate(publishData_rate); 
         while (rclcpp::ok() && !depth_id_queue.empty())
         {
             if(depth_map.size()<=MAX_SIZE && pointcloud_map.size()<=MAX_SIZE)
@@ -238,11 +239,13 @@ private:
                 pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_data = readLidarData(lidar_path);
                 cv::Mat depth_image;
                 projectLidarDataToDepthImageFaster(lidar_data, extrinsic_matrix, intrinsic_matrix, depth_image);
-                if(densify_depth)
-                {
-                    densifyDepthImageWithRadius(depth_image,densification_radius);
+                if (depth_densification_method == "radius") {
+                    densifyDepthImageWithRadius(depth_image, densification_radius);
+                } else if (depth_densification_method == "flann") {
+                    densifyDepthImageFaster(depth_image);
+                } else {
+                    RCLCPP_INFO_ONCE(this->get_logger(), "No depth image densification method selected or defaulting to none.");
                 }
-
                 sensor_msgs::msg::PointCloud2 rosCloud;
                 pcl::toROSMsg(*lidar_data, rosCloud);
                 rosCloud.header.frame_id = "lidar_link";
@@ -266,7 +269,7 @@ private:
     void publishData() {
         if (_data_counter==0)
         {            
-            RCLCPP_INFO_ONCE(this->get_logger(), "Starting data publishing at %f Hz...",1.0/(_publishData_millis*0.001f));
+            RCLCPP_INFO_ONCE(this->get_logger(), "Starting data publishing at %f Hz...", 10*publishData_rate);
         }
         
         if (_data_counter >= num_images)

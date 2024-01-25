@@ -9,6 +9,7 @@
 #include <pcl/point_types.h>
 #include <filesystem>
 
+#define DEPTH_HEIGHT_OFFSET 150
 
 int getNumberOfImages(const std::string& directory_path) {
     namespace fs = std::filesystem;
@@ -106,7 +107,7 @@ void projectLidarDataToDepthImage(const pcl::PointCloud<pcl::PointXYZI>::Ptr& li
         {
             int x = static_cast<int>(std::round( fx * (px/pz) + cx ));
             int y = static_cast<int>(std::round( fy * (py/pz) + cy ));
-            if (x >= 0 && x < image_width && y >= 150 && y < image_height) {
+            if (x >= 0 && x < image_width && y >= DEPTH_HEIGHT_OFFSET && y < image_height) {
                 depth_image.at<float>(y, x) = pz;
             }
         }
@@ -150,7 +151,7 @@ void projectLidarDataToDepthImageFast(const pcl::PointCloud<pcl::PointXYZI>::Ptr
         if(pz > 0) {
             uint32_t x = static_cast<uint32_t>(std::round(fx * (px/pz) + cx));
             uint32_t y = static_cast<uint32_t>(std::round(fy * (py/pz) + cy));
-            if (x >= 0 && x < image_width && y >= 150 && y < image_height) {
+            if (x >= 0 && x < image_width && y >= DEPTH_HEIGHT_OFFSET && y < image_height) {
                 depth_image.at<float>(y, x) = pz;
             }
         }
@@ -199,7 +200,7 @@ void projectLidarDataToDepthImageFaster(const pcl::PointCloud<pcl::PointXYZI>::P
             // This is faster than doing intrinsic * point then dividing by the third element to normalise and go from 3D to 2D
             int x = static_cast<int>(std::round( fx * (px/pz) + cx ));
             int y = static_cast<int>(std::round( fy * (py/pz) + cy ));
-            if (x >= 0 && x < image_width && y >= 150 && y < image_height) {
+            if (x >= 0 && x < image_width && y >= DEPTH_HEIGHT_OFFSET && y < image_height) {
                 depth_image.at<float>(y, x) = pz;
             }
         }
@@ -213,7 +214,7 @@ void densifyDepthImage(const cv::Mat& depth_image, cv::Mat& densified_depth_imag
 
     // Create a mask for missing (zero) depth values
     cv::Mat missing_mask = (depth_image == 0);
-    missing_mask(cv::Rect(0, 0, width, 150)) = false;
+    missing_mask(cv::Rect(0, 0, width, DEPTH_HEIGHT_OFFSET)) = false;
 
     // Choose inpainting method
     double inpaintRadius = 5;  // Inpainting radius
@@ -229,6 +230,7 @@ void densifyDepthImage(const cv::Mat& depth_image, cv::Mat& densified_depth_imag
 }
 
 
+//TODO: Many logic bugs.. doesn't work 
 void densifyDepthImageFast(cv::Mat& depth_image) {
     int height = depth_image.rows;
     int width = depth_image.cols;
@@ -283,7 +285,7 @@ void densifyDepthImageFaster(cv::Mat& depth_image)
     zeroPoints.reserve(estimatedZeroCount);
 
     // Step 1: Collect non-zero points and their values
-    for (int y = 150; y < depth_image.rows; ++y) {
+    for (int y = DEPTH_HEIGHT_OFFSET; y < depth_image.rows; ++y) {
         for (int x = 0; x < depth_image.cols; ++x) {
             float value = depth_image.at<float>(y, x);
             if (value != 0) {
@@ -298,24 +300,25 @@ void densifyDepthImageFaster(cv::Mat& depth_image)
 
     // Convert non-zero points to Mat for FLANN
     cv::Mat nonZeroMat(nonZeroPoints.size(), 2, CV_32F, nonZeroPoints.data());
-
     // Convert zero points to a single Mat
     cv::Mat zeroPointsMat(zeroPoints.size(), 2, CV_32F, zeroPoints.data());
 
-    // Step 2: Build FLANN index for non-zero points
-    cv::flann::Index flannIndex(nonZeroMat, cv::flann::KDTreeIndexParams(2)); // Using 1 KD-tree
+    // Build FLANN index with non-zero points
+    cv::flann::Index flannIndex(nonZeroMat, cv::flann::KDTreeIndexParams(2));
 
-    // Step 3: Perform a single batch knnSearch
-    cv::Mat indicesMat(zeroPoints.size(), 1, CV_32S); // For storing indices of nearest non-zero points
-    cv::Mat distsMat(zeroPoints.size(), 1, CV_32F); // For storing distances (unused here, but required by the function signature)
+    // Perform a batch knnSearch
+    cv::Mat indicesMat(zeroPointsMat.rows, 1, CV_32S); // To store indices of the nearest neighbors
+    cv::Mat distsMat(zeroPointsMat.rows, 1, CV_32F); // To store distances to the nearest neighbors
 
+    // Execute batch search
     flannIndex.knnSearch(zeroPointsMat, indicesMat, distsMat, 1, cv::flann::SearchParams(64));
 
-    // Step 4: Apply the nearest non-zero values to zero points
-    for (int i = 0; i < zeroPoints.size(); ++i) {
+    // Now, indicesMat contains the index of the nearest non-zero point for each zero-valued point
+    for (int i = 0; i < zeroPointsMat.rows; ++i) {
         int nearestIndex = indicesMat.at<int>(i, 0);
-        cv::Point2f point = zeroPoints[i];
-        depth_image.at<float>(point.y, point.x) = nonZeroValues[nearestIndex];
+        const cv::Point2f& queryPoint = zeroPoints[i];
+        float nearestValue = nonZeroValues[nearestIndex];
+        depth_image.at<float>(queryPoint.y, queryPoint.x) = nearestValue;
     }
 }
 
@@ -328,7 +331,7 @@ inline std::string generateKey(int x, int y) {
 void densifyDepthImageWithRadius(cv::Mat& depth_image, int radius=3) {
     std::unordered_set<std::string> filled;
     // Iterate over all points
-    for (int y = 150; y < depth_image.rows-radius; ++y) {
+    for (int y = DEPTH_HEIGHT_OFFSET; y < depth_image.rows-radius; ++y) {
         for (int x = radius; x < depth_image.cols-radius; ++x) {
             float value = depth_image.at<float>(y, x);
             if ( value != 0 and filled.find(generateKey(x,y))==filled.end() ) {
@@ -368,7 +371,7 @@ void depthImageToPointcloud(const cv::Mat& depth_image, const Eigen::Matrix3f& i
     cloud->is_dense = false;
     cloud->points.resize(cloud->width * cloud->height);
 
-    for (int i = 150; i < depth_image.rows; i++) {
+    for (int i = DEPTH_HEIGHT_OFFSET; i < depth_image.rows; i++) {
         for (int j = 0; j < depth_image.cols; j++) {
             pcl::PointXYZ& pt = cloud->points[i * depth_image.cols + j];
             

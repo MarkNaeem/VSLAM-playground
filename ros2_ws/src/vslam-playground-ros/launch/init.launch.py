@@ -16,14 +16,16 @@ def generate_launch_description():
         package='vslam-playground-ros',
         executable='data_publisher',
         name='data_publisher',
-        parameters=[
-            {'publish_rate_millis': 100},
-            {'max_size': 50},
-            {'num_image_loader_threads': 1},
-            {'num_depth_loader_threads': 2},
-            {'densify_depth': True},
-            {'publish_test_pcl': True},
-            {'densification_radius': 2},
+        parameters=[            
+            {'base_directory': "/media/mark/New Volume/kitti-dataset/"},
+            {"data_track": "02"},
+            {'publish_rate': 10.0},
+            {'max_size': 100},
+            {'num_image_loader_threads': 2},
+            {'num_depth_loader_threads': 4},
+            {'depth_densification_method': 'radius'},
+            {'densification_radius': 3},
+            {'publish_test_pcl': False},
         ],
     )
 
