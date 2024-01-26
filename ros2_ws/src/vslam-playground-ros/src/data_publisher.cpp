@@ -34,7 +34,8 @@ public:
       { 
         // Declare parameters with default values
         this->declare_parameter<std::string>("base_directory");
-        this->declare_parameter<std::string>("data_track");
+        this->declare_parameter<std::string>("sequence_number");
+        this->declare_parameter<int>("start_point",0);
         this->declare_parameter<float>("publish_rate", 10.0); // Publishing rate in Hz
         this->declare_parameter<int>("max_size", 10); // Maximum number of elements in the maps
         this->declare_parameter<int>("num_image_loader_threads", 1);
@@ -44,11 +45,12 @@ public:
         this->declare_parameter<int>("densification_radius", 2);
 
         std::string base_directory;
-        std::string data_track;
+        std::string sequence_number;
 
         // Use parameters to set values
         this->get_parameter("base_directory", base_directory);
-        this->get_parameter("data_track", data_track);
+        this->get_parameter("sequence_number", sequence_number);
+        this->get_parameter("start_point", START_POINT);
         this->get_parameter("publish_rate", publishData_rate);
         this->get_parameter("max_size", MAX_SIZE);
         this->get_parameter("num_image_loader_threads", num_image_loader_threads);
@@ -60,15 +62,22 @@ public:
         _publishData_millis = static_cast<int>(1000.0 / publishData_rate);
 
         // Construct paths based on parameters
-        image_directory = base_directory + "/sequences/" + data_track + "/image_2";
-        lidar_directory = base_directory + "/sequences/" + data_track + "/velodyne";
-        calib_file_path = base_directory + "/sequences/" + data_track + "/calib.txt";
+        image_directory = base_directory + "/sequences/" + sequence_number + "/image_2";
+        lidar_directory = base_directory + "/sequences/" + sequence_number + "/velodyne";
+        calib_file_path = base_directory + "/sequences/" + sequence_number + "/calib.txt";
 
-        timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(_publishData_millis),
-            std::bind(&DataPublisher::publishData, this));
-    
         num_images = getNumberOfImages(image_directory);
+        if (START_POINT < 0 || START_POINT > num_images)
+        {
+            RCLCPP_ERROR(this->get_logger(), " start point: %d rejected!! sequence length: %d. Will use 0 as start point!", START_POINT, num_images);
+            _data_counter = 0;
+            START_POINT = 0;
+        }
+        else
+        {
+            _data_counter = START_POINT;
+        }
+
         image_pub = this->create_publisher<sensor_msgs::msg::Image>("image_color", 10);
         depth_pub = this->create_publisher<sensor_msgs::msg::Image>("image_depth", 10);
         pointcloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("lidar_points", 10);
@@ -94,12 +103,13 @@ public:
         std::string extrinsic_str = ss_extrinsic.str();
         RCLCPP_INFO(this->get_logger(), "Extrinsic Matrix:\n%s", extrinsic_str.c_str());
 
+        publishStaticTransform();
 
         // Populate the ID queue with image indices
         {
             std::lock_guard<std::mutex> depth_lock(depth_id_queue_mutex);
             std::lock_guard<std::mutex> image_lock(image_id_queue_mutex);
-            for (int i = 0; i < num_images; ++i)
+            for (int i = START_POINT; i < num_images; ++i)
             {
                 depth_id_queue.push(i);
                 image_id_queue.push(i);
@@ -118,7 +128,9 @@ public:
             depth_loader_threads.emplace_back(&DataPublisher::depthWorker, this);
         }
 
-        publishStaticTransform();
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(_publishData_millis),
+            std::bind(&DataPublisher::publishData, this));    
     }
 
 
@@ -177,21 +189,20 @@ private:
     
     bool publish_test_pcl;
     int densification_radius;
+    std::string depth_densification_method;
     int _publishData_millis;
     float publishData_rate;
+    int START_POINT;
     int _data_counter = 0;
     int num_images;
     std::string image_directory;
     std::string lidar_directory;
     std::string calib_file_path;
 
-    std::string depth_densification_method;
-    std::unordered_map<std::string,int> densification_methods_map = {{"flann",0},{"radius",1},{"none",2}};
-
 
    void imageWorker() {
-        RCLCPP_INFO(this->get_logger(), "Image worker thread started with %f Hz.", publishData_rate);
-        rclcpp::Rate rate(publishData_rate); 
+        RCLCPP_INFO(this->get_logger(), "Image worker thread started with %f Hz.", 10*publishData_rate);
+        rclcpp::Rate rate(10*publishData_rate); 
         while (rclcpp::ok() && !image_id_queue.empty())
         {
             if(image_map.size()<=MAX_SIZE)
@@ -220,7 +231,7 @@ private:
 
     void depthWorker() {
         RCLCPP_INFO(this->get_logger(), "Depth worker thread started with %f Hz.", 10*publishData_rate);
-        rclcpp::Rate rate(publishData_rate); 
+        rclcpp::Rate rate(10*publishData_rate); 
         while (rclcpp::ok() && !depth_id_queue.empty())
         {
             if(depth_map.size()<=MAX_SIZE && pointcloud_map.size()<=MAX_SIZE)
@@ -243,7 +254,12 @@ private:
                     densifyDepthImageWithRadius(depth_image, densification_radius);
                 } else if (depth_densification_method == "flann") {
                     densifyDepthImageFaster(depth_image);
-                } else {
+                } else if (depth_densification_method == "telea") {
+                    densifyDepthImage(depth_image,densification_radius,"telea");
+                } else if (depth_densification_method == "ns") {
+                    densifyDepthImage(depth_image,densification_radius,"ns");
+                }
+                else {
                     RCLCPP_INFO_ONCE(this->get_logger(), "No depth image densification method selected or defaulting to none.");
                 }
                 sensor_msgs::msg::PointCloud2 rosCloud;

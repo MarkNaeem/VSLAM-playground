@@ -149,8 +149,8 @@ void projectLidarDataToDepthImageFast(const pcl::PointCloud<pcl::PointXYZI>::Ptr
         float py = camera_points(1, i);
         float pz = camera_points(2, i);      
         if(pz > 0) {
-            uint32_t x = static_cast<uint32_t>(std::round(fx * (px/pz) + cx));
-            uint32_t y = static_cast<uint32_t>(std::round(fy * (py/pz) + cy));
+            int x = static_cast<int>(std::round( fx * (px/pz) + cx ));
+            int y = static_cast<int>(std::round( fy * (py/pz) + cy ));
             if (x >= 0 && x < image_width && y >= DEPTH_HEIGHT_OFFSET && y < image_height) {
                 depth_image.at<float>(y, x) = pz;
             }
@@ -208,16 +208,12 @@ void projectLidarDataToDepthImageFaster(const pcl::PointCloud<pcl::PointXYZI>::P
 }
 
 
-void densifyDepthImage(const cv::Mat& depth_image, cv::Mat& densified_depth_image, const std::string& method = "ns") {
-    int height = depth_image.rows;
-    int width = depth_image.cols;
-
+void densifyDepthImage(const cv::Mat& depth_image, const double inpaintRadius = 5, const std::string method = "ns") {
     // Create a mask for missing (zero) depth values
     cv::Mat missing_mask = (depth_image == 0);
-    missing_mask(cv::Rect(0, 0, width, DEPTH_HEIGHT_OFFSET)) = false;
+    missing_mask(cv::Rect(0, 0, depth_image.cols, DEPTH_HEIGHT_OFFSET)) = false;
 
     // Choose inpainting method
-    double inpaintRadius = 5;  // Inpainting radius
     int flags;
     if (method == "telea") {
         flags = cv::INPAINT_TELEA;
@@ -226,7 +222,7 @@ void densifyDepthImage(const cv::Mat& depth_image, cv::Mat& densified_depth_imag
     }
 
     // Apply inpainting to fill in the missing depth values
-    cv::inpaint(depth_image, missing_mask, densified_depth_image, inpaintRadius, flags);
+    cv::inpaint(depth_image, missing_mask, depth_image, inpaintRadius, flags);
 }
 
 

@@ -18,14 +18,15 @@ def generate_launch_description():
         name='data_publisher',
         parameters=[            
             {'base_directory': "/media/mark/New Volume/kitti-dataset/"},
-            {"data_track": "02"},
+            {"sequence_number": "02"},
+            {"start_point": 4665},            
             {'publish_rate': 10.0},
             {'max_size': 100},
             {'num_image_loader_threads': 2},
             {'num_depth_loader_threads': 4},
             {'depth_densification_method': 'radius'},
-            {'densification_radius': 3},
-            {'publish_test_pcl': False},
+            {'densification_radius': 5},
+            {'publish_test_pcl': True},
         ],
     )
 

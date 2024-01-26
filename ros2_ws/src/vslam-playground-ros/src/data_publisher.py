@@ -29,11 +29,11 @@ class DataPublisher(Node):
         self.pointcloud_pub = self.create_publisher(PointCloud2, 'py_lidar_points', 10)
         self.camera_info_pub = self.create_publisher(CameraInfo, 'py_camera_info', 10)
 
-        self.data_track = '02'
+        self.sequence_number = '02'
         self.dataset_path = DATASET_PATH
-        self.num_images = len(os.listdir(f'{self.dataset_path}/sequences/{self.data_track}/image_2'))
+        self.num_images = len(os.listdir(f'{self.dataset_path}/sequences/{self.sequence_number}/image_2'))
 
-        self.intrinsic_matrix, self.extrinsic_matrix = load_calibration_data(f'{self.dataset_path}/sequences/{self.data_track}/calib.txt')
+        self.intrinsic_matrix, self.extrinsic_matrix = load_calibration_data(f'{self.dataset_path}/sequences/{self.sequence_number}/calib.txt')
 
         self.image_queue = Queue()
         self.depth_queue = Queue()
@@ -51,14 +51,14 @@ class DataPublisher(Node):
 
     def image_loader(self):
         for i in range(self.num_images):
-            color_image_path = f'{self.dataset_path}/sequences/{self.data_track}/image_2/{i:06d}.png'
+            color_image_path = f'{self.dataset_path}/sequences/{self.sequence_number}/image_2/{i:06d}.png'
             color_image = cv2.imread(color_image_path)
             self.image_queue.put(color_image)
 
 
     def depth_loader(self):
         for i in range(self.num_images):
-            lidar_path = f'{self.dataset_path}/sequences/{self.data_track}/velodyne/{i:06d}.bin'
+            lidar_path = f'{self.dataset_path}/sequences/{self.sequence_number}/velodyne/{i:06d}.bin'
             lidar_points = read_velodyne_bin(lidar_path)
             image_points, depths = project_lidar_to_camera(lidar_points, self.extrinsic_matrix, self.intrinsic_matrix, self.intrinsic_matrix[0, 2] * 2, self.intrinsic_matrix[1, 2] * 2)
             lidar_depth_image, _ = create_depth_image(image_points, depths, int(self.intrinsic_matrix[0, 2] * 2), int(self.intrinsic_matrix[1, 2] * 2))

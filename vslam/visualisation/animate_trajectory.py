@@ -6,14 +6,14 @@ from vslam.utils import load_poses
 from tqdm import tqdm
 from vslam.definitions import *
 
-def plot_trajectories_animation(real_trajectory_path, trajectory_files, labels, data_track, output_video, fps=30):
+def plot_trajectories_animation(real_trajectory_path, trajectory_files, labels, sequence_number, output_video, fps=30):
     """
     Create a video animation showing the progression of multiple trajectories against the real trajectory.
 
     :param real_trajectory_path: Path to the real trajectory file.
     :param trajectory_files: List of file paths to the trajectories to plot.
     :param labels: List of labels for each trajectory.
-    :param data_track: Data track identifier for the real trajectory.
+    :param sequence_number: Data track identifier for the real trajectory.
     :param output_video: Path to save the output video.
     :param fps: Frames per second for the output video.
     """
@@ -41,7 +41,7 @@ def plot_trajectories_animation(real_trajectory_path, trajectory_files, labels, 
     # Plotting function for each frame
     def update(num, kitti_positions, trajectories, labels):
         ax.clear()
-        ax.plot(kitti_positions[:num, 0], kitti_positions[:num, 2], label=f'KITTI seq{data_track} Ground Truth')
+        ax.plot(kitti_positions[:num, 0], kitti_positions[:num, 2], label=f'KITTI seq{sequence_number} Ground Truth')
         for traj, label in zip(trajectories, labels):
             ax.plot(traj[:num, 0], traj[:num, 2], label=label, linestyle='--')
         ax.legend()
@@ -63,7 +63,7 @@ def plot_trajectories_animation(real_trajectory_path, trajectory_files, labels, 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Create a video animation of multiple trajectories against a real trajectory.")
-    parser.add_argument("--data_track", help="Data track identifier for the real trajectory.")
+    parser.add_argument("--sequence_number", help="Data track identifier for the real trajectory.")
     parser.add_argument("--trajectory_files", nargs='+', help="File paths to the trajectories to plot.", required=True)
     parser.add_argument("--labels", nargs='+', help="Labels for each trajectory.", required=True)
     parser.add_argument("--output_video", help="Path to save the output video.", required=True)
@@ -71,5 +71,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    real_trajectory_path = f'{DATASET_PATH}/poses/{args.data_track}.txt'
-    plot_trajectories_animation(real_trajectory_path, args.trajectory_files, args.labels, args.data_track, args.output_video, args.fps)
+    real_trajectory_path = f'{DATASET_PATH}/poses/{args.sequence_number}.txt'
+    plot_trajectories_animation(real_trajectory_path, args.trajectory_files, args.labels, args.sequence_number, args.output_video, args.fps)

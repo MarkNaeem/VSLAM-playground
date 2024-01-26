@@ -4,7 +4,7 @@ import argparse
 from vslam.utils import load_poses
 from vslam.definitions import *
 
-def plot_trajectories(real_trajectory_path, trajectory_files, labels, data_track):
+def plot_trajectories(real_trajectory_path, trajectory_files, labels, sequence_number):
     """
     Plot multiple trajectories against the real trajectory for comparison,
     along with X and Z velocities.
@@ -12,7 +12,7 @@ def plot_trajectories(real_trajectory_path, trajectory_files, labels, data_track
     :param real_trajectory_path: Path to the real trajectory file.
     :param trajectory_files: List of file paths to the trajectories to plot.
     :param labels: List of labels for each trajectory.
-    :param data_track: Data track identifier for the real trajectory.
+    :param sequence_number: Data track identifier for the real trajectory.
     """
     # Load real trajectory
     real_trajectory = load_poses(real_trajectory_path)
@@ -25,7 +25,7 @@ def plot_trajectories(real_trajectory_path, trajectory_files, labels, data_track
     ax_z_velocity = fig.add_subplot(2, 2, 4)
 
     # Plot the real trajectory
-    ax_trajectory.plot(kitti_positions[:, 0], kitti_positions[:, 2], label=f'KITTI seq{data_track} Ground Truth')
+    ax_trajectory.plot(kitti_positions[:, 0], kitti_positions[:, 2], label=f'KITTI seq{sequence_number} Ground Truth')
 
     positions = []
     # Plot each trajectory in the list
@@ -71,11 +71,11 @@ def plot_trajectories(real_trajectory_path, trajectory_files, labels, data_track
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot multiple trajectories against a real trajectory.")
-    parser.add_argument("--data_track", help="Data track identifier for the real trajectory.")
+    parser.add_argument("--sequence_number", help="Data track identifier for the real trajectory.")
     parser.add_argument("--trajectory_files", nargs='+', help="File paths to the trajectories to plot.", required=True)
     parser.add_argument("--labels", nargs='+', help="Labels for each trajectory.", required=True)
 
     args = parser.parse_args()
 
-    real_trajectory_path = f'{DATASET_PATH}/poses/{args.data_track}.txt'
-    plot_trajectories(real_trajectory_path, args.trajectory_files, args.labels, args.data_track)
+    real_trajectory_path = f'{DATASET_PATH}/poses/{args.sequence_number}.txt'
+    plot_trajectories(real_trajectory_path, args.trajectory_files, args.labels, args.sequence_number)
