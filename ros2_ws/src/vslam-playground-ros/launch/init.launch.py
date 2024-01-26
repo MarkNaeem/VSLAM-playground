@@ -17,9 +17,9 @@ def generate_launch_description():
         executable='data_publisher',
         name='data_publisher',
         parameters=[            
-            {'base_directory': "/media/mark/New Volume/kitti-dataset/"},
-            {"sequence_number": "02"},
-            {"start_point": 4665},            
+            {'base_directory': "/PATH/TO/YOUR/DATASET/FOLDER/"},
+            {"sequence_number": "00"},
+            {"start_point": 0},            
             {'publish_rate': 10.0},
             {'max_size': 100},
             {'num_image_loader_threads': 2},
