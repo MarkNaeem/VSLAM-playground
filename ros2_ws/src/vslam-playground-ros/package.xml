@@ -3,13 +3,12 @@
   <name>vslam-playground-ros</name>
   <version>0.0.0</version>
   <description>a playground for visual slam with kitti odometry dataset</description>
-  <maintainer email="marknaeem@yahoo.com">Mar Naeem</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="marknaeem@yahoo.com">Mark Naeem</maintainer>
+  <license>GPL-2.0</license>
 
   <!-- Buildtool dependencies, needed for building the package -->
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend> <!-- Needed for Python nodes -->
-
 
 
   <!-- Build dependencies, needed for building the package -->
@@ -48,7 +47,6 @@
   <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <!-- The export tag contains other, unspecified, tags -->
-    <build_type>ament_cmake</build_type> <!-- This allows C++ building -->
+    <build_type>ament_cmake</build_type>
   </export>
 </package>
