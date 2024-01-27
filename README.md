@@ -4,9 +4,11 @@ Building a full Visual SLAM pipeline to experiment with different techniques. Th
 
 ## Demos
 
-This video shows visual odometry running on sequence 2 from KITTI odometry dataset. It compares using LightGlue and  SuperGlue as feature matchers. Both are using SuperPoint as a feature extractor and descriptor and depth images created (and densified) from lidar readings.
+This video shows the ROS2 KITTI data handling node in work with its different depth densification methods.
 
-Odomtery is obtained with PnP. You can see slight drifts the more the sequence goes, but it's worth mentioning that ABSOLUTELY no corrections or loop clousres are used! 
+[![Alt text](https://img.youtube.com/vi/ndVrv3XVzAc/0.jpg)](https://www.youtube.com/watch?v=ndVrv3XVzAc)
+
+This video shows visual odometry running on sequence 2 from KITTI odometry dataset. It compares using LightGlue and  SuperGlue as feature matchers. Both are using SuperPoint as a feature extractor and descriptor and depth images created (and densified) from lidar readings.<br/>Odomtery is obtained with PnP. You can see slight drifts the more the sequence goes, but it's worth mentioning that ABSOLUTELY no corrections or loop clousres are used! 
 
 [![Alt text](https://img.youtube.com/vi/QBREBQpEkK4/0.jpg)](https://www.youtube.com/watch?v=QBREBQpEkK4)
 

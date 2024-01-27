@@ -1,1 +1,1 @@
-DATASET_PATH = "/media/mark/New Volume/kitti-dataset/"
+DATASET_PATH = "/PATH/TO/YOUR/DATASET/FOLDER/"
