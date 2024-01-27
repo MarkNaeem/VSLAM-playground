@@ -29,7 +29,7 @@
 
 class DataPublisher : public rclcpp::Node {
 public:
-    DataPublisher(): Node("data_publisher"),
+    DataPublisher(): Node("kitti_data_publisher"),
                      steady_clock(RCL_STEADY_TIME)
       { 
         // Declare parameters with default values
