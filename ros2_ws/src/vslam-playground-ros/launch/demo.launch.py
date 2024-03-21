@@ -1,8 +1,9 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
-import os
+from launch.actions import TimerAction
 
+import os
 
 def generate_launch_description():
     # Get the package directory
@@ -12,13 +13,13 @@ def generate_launch_description():
     rviz_config_file = os.path.join(pkg_dir, 'config', 'data_visualiser.rviz')
 
     # Node to run the data_publisher
-    vslam_node = Node(
+    data_node = Node(
         package='vslam-playground-ros',
         executable='data_publisher',
         name='data_publisher',
         parameters=[            
-            {'base_directory': "/PATH/TO/YOUR/DATASET/FOLDER/"},
-            {"sequence_number": "00"},
+            {'base_directory': "/PATH/TO/YOUR/DATASET"},
+            {"sequence_number": "02"},
             {"start_point": 0},            
             {'publish_rate': 10.0},
             {'max_size': 100},
@@ -30,6 +31,14 @@ def generate_launch_description():
         ],
     )
 
+    # delay to give the odometry node a chance to load 
+    # reduce the period if it is too slow for you 
+    # or incrfease if the data publisher starts before VO node is loaded 
+    delay_action = TimerAction(
+        period=5.0,
+        actions=[data_node]
+    )
+
     # Node to launch RViz with the specified configuration file
     rviz_node = Node(
         package='rviz2',
@@ -39,7 +48,16 @@ def generate_launch_description():
         output='screen'
     )
 
+    # starting the odometry node
+    odom_node = Node(
+        package='vslam-playground-ros',
+        executable='visual_odometry.py',
+        name='visual_odometry',
+        output='screen'
+    )    
+
     return LaunchDescription([
-        vslam_node,
+        odom_node,
         rviz_node,
+        delay_action,
     ])

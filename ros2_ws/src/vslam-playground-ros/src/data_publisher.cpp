@@ -19,6 +19,8 @@
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <pcl/point_cloud.h>
@@ -65,6 +67,14 @@ public:
         image_directory = base_directory + "/sequences/" + sequence_number + "/image_2";
         lidar_directory = base_directory + "/sequences/" + sequence_number + "/velodyne";
         calib_file_path = base_directory + "/sequences/" + sequence_number + "/calib.txt";
+        poses_file_path = base_directory + "/poses/" + sequence_number + ".txt";
+
+        // geting image heigt and width
+        std::string image_path = image_directory + "/000000.png";
+        cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
+        image_height = image.rows;
+        image_width  = image.cols;
+
 
         num_images = getNumberOfImages(image_directory);
         if (START_POINT < 0 || START_POINT > num_images)
@@ -81,6 +91,8 @@ public:
         image_pub = this->create_publisher<sensor_msgs::msg::Image>("image_color", 10);
         depth_pub = this->create_publisher<sensor_msgs::msg::Image>("image_depth", 10);
         pointcloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("lidar_points", 10);
+        path_pub = this->create_publisher<nav_msgs::msg::Path>("gt_path", 10);
+
         if (publish_test_pcl)
         {
             depth_pcl_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("depth_pcl", 10);
@@ -88,6 +100,11 @@ public:
         camera_info_pub = this->create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", 10);
         tf_broadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
         
+        // load GT path
+        loadPoses(poses_file_path, poses);  
+        gt_path_msg.header.frame_id = "odom";
+
+
         // Load calibration data
         loadCalibrationData(calib_file_path, intrinsic_matrix, extrinsic_matrix);
 
@@ -104,6 +121,13 @@ public:
         RCLCPP_INFO(this->get_logger(), "Extrinsic Matrix:\n%s", extrinsic_str.c_str());
 
         publishStaticTransform();
+
+        camera_base_rotation <<
+        extrinsic_matrix(0, 0), extrinsic_matrix(1, 0), extrinsic_matrix(2, 0), 0,
+        extrinsic_matrix(0, 1), extrinsic_matrix(1, 1), extrinsic_matrix(2, 1), 0,
+        extrinsic_matrix(0, 2), extrinsic_matrix(1, 2), extrinsic_matrix(2, 2), 0,
+                             0,                      0,                      0, 1;
+
 
         // Populate the ID queue with image indices
         {
@@ -157,9 +181,14 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_pub;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr depth_pcl_pub;
     rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_pub;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub;
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster;
 
+    nav_msgs::msg::Path gt_path_msg;
+
     rclcpp::TimerBase::SharedPtr timer_;
+
+    std::vector<Eigen::Matrix4f> poses;
 
     Eigen::Matrix3f intrinsic_matrix;
     Eigen::Matrix4f extrinsic_matrix;
@@ -184,6 +213,9 @@ private:
     int num_image_loader_threads;  // Number of threads for image loading
     int num_depth_loader_threads;  // Number of threads for depth loading
 
+    int image_height;
+    int image_width;
+
     std::vector<std::thread> image_loader_threads;
     std::vector<std::thread> depth_loader_threads;
     
@@ -195,9 +227,13 @@ private:
     int START_POINT;
     int _data_counter = 0;
     int num_images;
+
+    Eigen::Matrix<float, 4, 4> camera_base_rotation;
+
     std::string image_directory;
     std::string lidar_directory;
     std::string calib_file_path;
+    std::string poses_file_path;
 
 
    void imageWorker() {
@@ -249,7 +285,7 @@ private:
                 std::string lidar_path = lidar_directory + "/" + ss.str() + ".bin";
                 pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_data = readLidarData(lidar_path);
                 cv::Mat depth_image;
-                projectLidarDataToDepthImageFaster(lidar_data, extrinsic_matrix, intrinsic_matrix, depth_image);
+                projectLidarDataToDepthImageFaster(lidar_data, extrinsic_matrix, intrinsic_matrix, image_height, image_width, depth_image);
                 if (depth_densification_method == "radius") {
                     densifyDepthImageWithRadius(depth_image, densification_radius);
                 } else if (depth_densification_method == "flann") {
@@ -326,6 +362,35 @@ private:
                     depth_map.erase(_data_counter);
                     pointcloud_map.erase(_data_counter);
 
+
+                    if (_data_counter < poses.size()) {
+                            auto& pose_matrix = camera_base_rotation * poses[_data_counter] * camera_base_rotation.transpose();
+
+                            // Create a PoseStamped message
+                            geometry_msgs::msg::PoseStamped pose_stamped;
+                            pose_stamped.header.stamp = imgs_header.stamp; // to be on the same stamp as the images
+                            pose_stamped.header.frame_id = "odom"; 
+
+                            // Set the position
+                            pose_stamped.pose.position.x = pose_matrix(0, 3);
+                            pose_stamped.pose.position.y = pose_matrix(1, 3);
+                            pose_stamped.pose.position.z = pose_matrix(2, 3);
+
+                            // Convert the rotation matrix to a quaternion
+                            Eigen::Quaternionf quaternion(pose_matrix.block<3,3>(0,0));
+                            pose_stamped.pose.orientation.x = quaternion.x();
+                            pose_stamped.pose.orientation.y = quaternion.y();
+                            pose_stamped.pose.orientation.z = quaternion.z();
+                            pose_stamped.pose.orientation.w = quaternion.w();
+
+                            gt_path_msg.header.stamp = imgs_header.stamp;
+                            gt_path_msg.poses.push_back(pose_stamped); 
+
+                            // Publish the path
+                            path_pub->publish(gt_path_msg);
+                        }
+
+
                     // prepare for next iteration
                     _data_counter++;
                 }
@@ -355,8 +420,8 @@ private:
         sensor_msgs::msg::CameraInfo camera_info_msg;
         camera_info_msg.header.frame_id = "camera_link";
         camera_info_msg.header.stamp = this->get_clock()->now();
-        camera_info_msg.height = static_cast<uint32_t>(intrinsic_matrix(1, 1));
-        camera_info_msg.width = static_cast<uint32_t>(intrinsic_matrix(0, 0));
+        camera_info_msg.height = image_height;
+        camera_info_msg.width  = image_width;
         for (int i = 0; i < 9; ++i) {
             camera_info_msg.k[i] = intrinsic_matrix(i / 3, i % 3);
         }
@@ -411,6 +476,25 @@ private:
         base_camera_transform.transform.rotation = tf2::toMsg(quaternion);
 
         tf_broadcaster->sendTransform(base_camera_transform);
+
+        geometry_msgs::msg::TransformStamped odom_base_transform;
+        base_camera_transform.header.stamp = this->get_clock()->now();
+        base_camera_transform.header.frame_id = "odom";
+        base_camera_transform.child_frame_id = "base_link";
+
+        // Set the translation for base to camera link
+        base_camera_transform.transform.translation.x = 0.0;
+        base_camera_transform.transform.translation.y = 0.0;
+        base_camera_transform.transform.translation.z = 0.0;
+
+        base_camera_transform.transform.rotation.x = 0.0;
+        base_camera_transform.transform.rotation.y = 0.0;
+        base_camera_transform.transform.rotation.z = 0.0;
+        base_camera_transform.transform.rotation.w = 1.0;
+
+        tf_broadcaster->sendTransform(base_camera_transform);
+        
+    
     }
 };
 

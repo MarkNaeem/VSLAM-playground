@@ -22,6 +22,29 @@ int getNumberOfImages(const std::string& directory_path) {
     return file_count;
 }
 
+void loadPoses(const std::string& file_path, std::vector<Eigen::Matrix4f>& poses) {
+    std::ifstream file(file_path);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open poses file: " << file_path << std::endl;
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        // will modify the top three rows but will leave the last one from the I matrix as 0 0 0 1 (no need to append to or modify the last row) 
+        Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
+        std::istringstream iss(line);
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 4; ++j) {
+                iss >> pose(i, j);
+            }
+        }
+        poses.push_back(pose);
+    }
+
+}
+
 void loadCalibrationData(const std::string& calib_file, Eigen::Matrix3f &intrinsic_matrix, Eigen::Matrix4f &extrinsic_matrix) {
     std::ifstream file(calib_file);
     if (!file.is_open()) {
@@ -161,9 +184,13 @@ void projectLidarDataToDepthImageFast(const pcl::PointCloud<pcl::PointXYZI>::Ptr
 void projectLidarDataToDepthImageFaster(const pcl::PointCloud<pcl::PointXYZI>::Ptr& lidar_points,
                                   const Eigen::Matrix4f& extrinsic_matrix,
                                   const Eigen::Matrix3f& intrinsic_matrix,
+                                  const int image_height,
+                                  const int image_width,
                                   cv::Mat& depth_image) {
-    auto image_height = static_cast<int>(intrinsic_matrix(1, 2))*2;
-    auto image_width = static_cast<int>(intrinsic_matrix(0, 2))*2;
+    // IMPORTANT NOTE: changed to pass image height and width since the color image height and width (376, 1241) are 
+    // a few pixels off from the ones calculated from the intrinsic matrix (370, 1214) 
+    // auto image_height = static_cast<int>(intrinsic_matrix(1, 2))*2;
+    // auto image_width = static_cast<int>(intrinsic_matrix(0, 2))*2;
     depth_image = cv::Mat::zeros(image_height, image_width, CV_32FC1);
 
     // Intrinsic Values
