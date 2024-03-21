@@ -19,7 +19,7 @@ def generate_launch_description():
         name='data_publisher',
         parameters=[            
             {'base_directory': "/PATH/TO/YOUR/DATASET"},
-            {"sequence_number": "02"},
+            {"sequence_number": "00"},
             {"start_point": 0},            
             {'publish_rate': 10.0},
             {'max_size': 100},

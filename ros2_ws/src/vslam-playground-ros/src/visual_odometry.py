@@ -83,7 +83,6 @@ class VisualOdometryNode(Node):
         else:
             self.get_logger().info("Transform found")
         self.camera_transform = transform_to_matrix(transform.transform)
-        self.get_logger().info(self.camera_transform)
             
         # Subscriber for camera_info
         self.camera_sub = self.create_subscription(CameraInfo, 'camera_info', self.camera_info_callback, 10)

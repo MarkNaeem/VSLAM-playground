@@ -345,7 +345,7 @@ private:
                     RCLCPP_INFO(this->get_logger(), "Publishing data for image %d of %d", _data_counter + 1, num_images);
 
                     auto imgs_header = std_msgs::msg::Header();
-                    imgs_header.frame_id = "camera_frame";
+                    imgs_header.frame_id = "camera_link";
                     imgs_header.stamp = this->get_clock()->now();
 
                     color_image = image_map[_data_counter];
